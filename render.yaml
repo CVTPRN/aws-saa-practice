@@ -1,22 +1,10 @@
+# Reference configuration. The live static site is created directly via Render.
 services:
   - type: web
     name: aws-saa-practice
-    runtime: python
-    region: frankfurt
-    plan: starter
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn 'app:create_app()' --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 60
-    healthCheckPath: /health
-    disk:
-      name: practice-data
-      mountPath: /var/data
-      sizeGB: 1
+    runtime: static
+    buildCommand: npm ci && npm test && npm run build
+    staticPublishPath: dist
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.12
-      - key: DATABASE_PATH
-        value: /var/data/practice.db
-      - key: SECRET_KEY
-        generateValue: true
-      - key: ADMIN_SETUP_TOKEN
-        generateValue: true
+      - key: SKIP_INSTALL_DEPS
+        value: "true"

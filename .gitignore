@@ -6,3 +6,5 @@ instance/
 *.db-shm
 *.db-wal
 .env
+node_modules/
+dist/
