@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block body %}<section class="card error-card"><span class="eyebrow">{{ code }}</span><h1>{{ 'Nincs hozzáférés' if code==403 else 'Ez most nem sikerült' }}</h1><p>{{ message }}</p><a class="button" href="/">Vissza a főoldalra →</a></section>{% endblock %}

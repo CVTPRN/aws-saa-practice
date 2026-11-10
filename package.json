@@ -1,0 +1,7 @@
+{
+  "name": "aws-saa-practice",
+  "private": true,
+  "scripts": {
+    "dev": ".venv/bin/python dev.py"
+  }
+}
