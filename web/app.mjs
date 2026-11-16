@@ -1,5 +1,6 @@
 import {escape as e,dayKey,statistics,score,sameAnswer,questionIssue,parseCSV,questionId,exportCSV,validateBackup,TOPICS,topicById,questionInTopic} from './core.mjs';
 import * as storage from './db.mjs';
+import {ABBREVIATIONS,NUMBER_FACTS} from './reference.mjs';
 const main=document.querySelector('#main'),messageBox=document.querySelector('#message');
 let db,questions=[],attempts=[],pendingRestore=null,epoch=0;
 const letter=i=>'ABCDEFGH'[i];
@@ -24,11 +25,19 @@ function dashboard(){
   <div class="local-note"><span>◉ A gyakorlásaid ebben a böngészőben maradnak. A böngészőadatok törlése előtt készíts mentést.</span>${link('/settings','Biztonsági mentés →')}</div>
   ${active.length?`<div class="resume-list"><span class="eyebrow">FOLYTATÁSRA VÁR</span>${active.slice(0,6).map(a=>link(attemptLink(a),`${e(modeLabel(a))} · ${a.day} · ${a.answers.length}/30 <span>Folytatás →</span>`)).join('')}${active.length>6?link('/history',`Összes (${active.length}) →`):''}</div>`:''}
   <div class="section-heading"><div><span class="eyebrow">CÉLZOTT GYAKORLÁS</span><h2>Ismételj témakörönként</h2></div>${link('/topics','Témakörök megnyitása →','button secondary')}</div>
+  <div class="section-heading"><div><span class="eyebrow">GYORS ISMÉTLÉS</span><h2>Rövidítések és számok</h2></div>${link('/reference','Puskázó megnyitása →','button secondary')}</div>
   <div class="section-heading"><div><span class="eyebrow">LÁTHATÓ FEJLŐDÉS</span><h2>A kitartásod nyoma</h2></div><span class="muted">Az elmúlt 28 nap</span></div><section class="card activity"><div class="activity-days">${s.calendar.map(d=>`<div class="day-cell ${d.sessions?(d.percent>=80?'great':d.percent>=60?'good':'learning'):''}" title="${d.day}: ${d.sessions?d.percent+'%':'nincs befejezett gyakorlás'}"><span>${d.day.slice(8)}</span><strong>${d.sessions?d.percent+'%':'·'}</strong></div>`).join('')}</div><div class="activity-legend"><span>A befejezés napja szerint · Europe/Budapest</span><span>○ Nincs gyakorlás <b class="legend-learning">●</b> &lt;60% <b class="legend-good">●</b> 60–79% <b class="legend-great">●</b> ≥80%</span></div></section>
   <div class="section-heading"><h2>Napi teljesítmény</h2><span class="muted">Helyes válaszok / összes kérdés</span></div><section class="card table-wrap"><table><thead><tr><th>Dátum</th><th>Gyakorlások</th><th>Helyes válaszok</th><th>Pontosság</th><th>Napi kihívás</th></tr></thead><tbody>${s.days.map(d=>`<tr><td>${d.day}</td><td>${d.sessions}</td><td>${d.correct} / ${d.total}</td><td><strong>${d.percent}%</strong></td><td>${d.daily?'✓ Teljesítve':'—'}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Az első befejezett gyakorlás után itt jelenik meg a fejlődésed.</td></tr>'}</tbody></table></section>
   ${s.finished.length?`<div class="section-heading"><h2>Legutóbbi gyakorlások</h2>${link('/history','Összes gyakorlás →')}</div><div class="history-list">${s.finished.slice(0,6).map(historyItem).join('')}</div>`:''}`;
 }
 function historyItem(a){return link(attemptLink(a),`<div><strong>${e(modeLabel(a))}</strong><small>${e(prettyDate(a.completedAt||a.startedAt))}</small></div><span>${a.completedAt?score(a)+' / 30':a.answers.length+' / 30 mentve'} <b>→</b></span>`,'card history-item');}
+function referencePage(){
+  const count=ABBREVIATIONS.reduce((sum,group)=>sum+group.items.length,0),facts=NUMBER_FACTS.reduce((sum,group)=>sum+group.items.length,0);
+  return `<div class="page-heading"><div><span class="eyebrow">AWS SAA-C03 · GYORS ISMÉTLÉS</span><h1>Puskázó<span class="accent">.</span></h1><p class="muted">${count} rövidítés feloldása és ${facts} számszerű vizsgatény egy helyen.</p></div></div>
+    <div class="reference-jump"><button class="button secondary" data-action="jump-reference" data-target="abbreviations">Rövidítések ↓</button><button class="button secondary" data-action="jump-reference" data-target="numeric-facts">Számszerű tények ↓</button></div>
+    <section id="abbreviations" class="reference-section"><div class="section-heading"><div><span class="eyebrow">01 / FOGALMAK</span><h2>Rövidítések</h2></div><span class="muted">Angol feloldások, mint a kérdésbankban</span></div><label class="sr-only" for="reference-search">Rövidítések keresése</label><input id="reference-search" class="reference-search" type="search" placeholder="Keresés: VPC, RDS, DNS…" autocomplete="off"><p id="reference-empty" class="muted" hidden>Nincs egyező rövidítés.</p><div class="reference-grid">${ABBREVIATIONS.map(group=>`<section class="card reference-card"><h3>${e(group.group)}</h3><dl>${[...group.items].sort((a,b)=>a[0].localeCompare(b[0],'en')).map(([abbr,full])=>`<div class="reference-row"><dt>${e(abbr)}</dt><dd lang="en">${e(full)}</dd></div>`).join('')}</dl></section>`).join('')}</div></section>
+    <section id="numeric-facts" class="reference-section"><div class="section-heading"><div><span class="eyebrow">02 / SZÁMOK</span><h2>Számszerű tények</h2></div><span class="muted">AWS-dokumentáció alapján · 2026. november 16.</span></div><p class="reference-help">Az alapkvóták fiókonként és régiónként eltérhetnek, és később változhatnak. Minden tételnél megnyithatod az aktuális AWS-forrást.</p><div class="reference-grid">${NUMBER_FACTS.map(group=>`<section class="card fact-card"><h3>${e(group.group)}</h3><div class="fact-list">${group.items.map(([question,value,source])=>`<div class="fact-row"><span>${e(question)}</span><strong>${e(value)}</strong><a href="${e(source)}" target="_blank" rel="noopener noreferrer" aria-label="AWS-forrás: ${e(question)}">AWS-forrás ↗</a></div>`).join('')}</div></section>`).join('')}</div></section>`;
+}
 function topicsPage(){
   const available=questions.filter(activeQuestion);
   return `<div class="page-heading"><div><span class="eyebrow">CÉLZOTT GYAKORLÁS</span><h1>Témakörök<span class="accent">.</span></h1><p class="muted">Válassz egy témát, és gyakorolj 30 véletlenszerű kérdéssel. Bármennyiszer újrakezdheted.</p></div></div>
@@ -75,6 +84,7 @@ async function render(){
     await load();let html;
     if(path==='/')html=dashboard();
     else if(path==='/topics')html=topicsPage();
+    else if(path==='/reference')html=referencePage();
     else if(path==='/admin')html=admin(new URLSearchParams(query));
     else if(path==='/settings')html=await settings();
     else if(path==='/history')html=`<div class="page-heading"><div><span class="eyebrow">A TE HALADÁSOD</span><h1>Gyakorlási előzmények</h1></div>${link('/','← Áttekintés')}</div><div class="history-list">${[...attempts].sort((a,b)=>b.startedAt.localeCompare(a.startedAt)).map(historyItem).join('')||'<p>Még nincs elkezdett gyakorlás.</p>'}</div>`;
@@ -82,7 +92,7 @@ async function render(){
     else if(path.startsWith('/question/'))html=editor(decodeURIComponent(path.slice(10)));
     else html=`<section class="card empty"><h1>Ez az oldal nem található.</h1>${link('/','Vissza a főoldalra →','button')}</section>`;
     if(current!==epoch)return;main.innerHTML=html;
-    document.querySelectorAll('[data-nav]').forEach(a=>{const on=a.dataset.nav===(path.startsWith('/admin')||path.startsWith('/question')?'admin':path==='/settings'?'settings':path==='/topics'?'topics':'home');if(on)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+    document.querySelectorAll('[data-nav]').forEach(a=>{const on=a.dataset.nav===(path.startsWith('/admin')||path.startsWith('/question')?'admin':path==='/settings'?'settings':path==='/topics'?'topics':path==='/reference'?'reference':'home');if(on)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
   }catch(error){if(current===epoch)failure(error);}
 }
 main.addEventListener('change',event=>{
@@ -91,6 +101,16 @@ main.addEventListener('change',event=>{
     form.querySelector('button').disabled=count!==wanted;document.querySelector('#selected-count').textContent=`${count} / ${wanted} válasz kijelölve · Kiértékelés a kör végén.`;
   }
   if(event.target.id==='mistakes-only')document.querySelectorAll('.review-item.is-correct').forEach(item=>item.hidden=event.target.checked);
+});
+main.addEventListener('input',event=>{
+  if(event.target.id!=='reference-search')return;
+  const term=event.target.value.trim().toLocaleLowerCase();let matches=0;
+  main.querySelectorAll('.reference-card').forEach(card=>{
+    let visible=0;
+    card.querySelectorAll('.reference-row').forEach(row=>{row.hidden=!row.textContent.toLocaleLowerCase().includes(term);if(!row.hidden){visible++;matches++;}});
+    card.hidden=!visible;
+  });
+  main.querySelector('#reference-empty').hidden=Boolean(matches);
 });
 main.addEventListener('submit',async event=>{
   const form=event.target;if(!form.dataset.form)return;event.preventDefault();messageBox.hidden=true;const submit=form.querySelector('button');if(submit.disabled)return;submit.disabled=true;
@@ -120,6 +140,7 @@ main.addEventListener('click',async event=>{
   const button=event.target.closest('[data-action]');if(!button||button.disabled)return;messageBox.hidden=true;button.disabled=true;
   try{
     switch(button.dataset.action){
+      case 'jump-reference':document.getElementById(button.dataset.target)?.scrollIntoView({behavior:'smooth'});break;
       case 'start-daily':case 'start-free':{
         const a=await storage.start(db,button.dataset.action==='start-daily'?'daily':'free');to(attemptLink(a));break;
       }
