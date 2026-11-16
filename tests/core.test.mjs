@@ -1,6 +1,6 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
 import {parseCSV,csvRows,exportCSV,questionId,questionIssue,dayKey,makeAttempt,answerAttempt,score,statistics,validateBackup,FORMAT,VERSION,escape,TOPICS,questionInTopic} from '../web/core.mjs';
-import {ABBREVIATIONS,NUMBER_FACTS} from '../web/reference.mjs';
+import {ABBREVIATIONS,NUMBER_FACTS,abbreviationSource} from '../web/reference.mjs';
 export const fixture=()=>Array.from({length:40},(_,i)=>({id:'q'+i,question:`Question ${i} (Choose two.)`,options:['Alpha','Beta','Gamma'],correct:[0,2],issue:'',active:true,explanation:'',rawKey:'',sourceLine:null}));
 const makeBackup=(questions,attempts=[])=>({format:FORMAT,version:VERSION,questions,attempts});
 test('original CSV produces the reviewed question bank',async()=>{
@@ -62,6 +62,7 @@ test('reference page has distinct abbreviations and sourced numerical facts',()=
  const acronyms=ABBREVIATIONS.flatMap(group=>group.items);
  assert.ok(acronyms.length>=140);assert.equal(new Set(acronyms.map(([short])=>short.toLowerCase())).size,acronyms.length);
  assert.ok(acronyms.every(([short,full])=>short.trim()&&full.trim()));
+ assert.ok(acronyms.every(([short])=>['aws.amazon.com','docs.aws.amazon.com'].includes(new URL(abbreviationSource(short)).hostname)));
  for(const key of ['VPC','RDS','AZ','S3','IAM','KMS','EKS','SQS'])assert.ok(acronyms.some(([short])=>short===key));
  const facts=NUMBER_FACTS.flatMap(group=>group.items);
  assert.ok(facts.length>=25);assert.equal(new Set(facts.map(([question])=>question)).size,facts.length);

@@ -6,7 +6,7 @@ export const ABBREVIATIONS = [
     ['SDK','Software Development Kit'],['IaC','Infrastructure as Code'],['CI/CD','Continuous Integration / Continuous Delivery'],
     ['HA','High Availability'],['DR','Disaster Recovery'],['RTO','Recovery Time Objective'],['RPO','Recovery Point Objective'],
     ['SLA','Service Level Agreement'],['SLO','Service Level Objective'],['TCO','Total Cost of Ownership'],
-    ['CAPEX','Capital Expenditure'],['OPEX','Operating Expenditure'],['PoC','Proof of Concept']
+    ['CAPEX','Capital Expenditure'],['OPEX','Operational Expenditure'],['PoC','Proof of Concept']
   ]},
   {group:'Hálózat és tartalomkézbesítés',items:[
     ['VPC','Virtual Private Cloud'],['CIDR','Classless Inter-Domain Routing'],['IP','Internet Protocol'],
@@ -19,7 +19,7 @@ export const ABBREVIATIONS = [
     ['NACL','Network Access Control List'],['SG','Security Group'],['ENI','Elastic Network Interface'],
     ['EIP','Elastic IP address'],['IPAM','IP Address Manager'],['MTU','Maximum Transmission Unit'],
     ['TTL','Time to Live'],['CDN','Content Delivery Network'],['VIF','Virtual Interface'],
-    ['VPCe','VPC Endpoint'],['ALB','Application Load Balancer'],['NLB','Network Load Balancer'],
+    ['ALB','Application Load Balancer'],['NLB','Network Load Balancer'],
     ['GWLB','Gateway Load Balancer'],['ELB','Elastic Load Balancing']
   ]},
   {group:'Compute és konténerek',items:[
@@ -28,7 +28,7 @@ export const ABBREVIATIONS = [
     ['CPU','Central Processing Unit'],['vCPU','Virtual Central Processing Unit'],['GPU','Graphics Processing Unit'],
     ['HPC','High Performance Computing'],['OS','Operating System'],['SSH','Secure Shell'],
     ['RDP','Remote Desktop Protocol'],['VM','Virtual Machine'],['HVM','Hardware Virtual Machine'],
-    ['LT','Launch Template'],['IMDS','Instance Metadata Service']
+    ['IMDS','Instance Metadata Service']
   ]},
   {group:'Tárolás és adatvédelem',items:[
     ['S3','Simple Storage Service'],['EBS','Elastic Block Store'],['EFS','Elastic File System'],
@@ -64,15 +64,73 @@ export const ABBREVIATIONS = [
     ['JSON','JavaScript Object Notation'],['XML','Extensible Markup Language'],['JWT','JSON Web Token'],
     ['URL','Uniform Resource Locator'],['URI','Uniform Resource Identifier'],['MQTT','Message Queuing Telemetry Transport'],
     ['AMQP','Advanced Message Queuing Protocol'],['SAM','Serverless Application Model'],
-    ['KCL','Kinesis Client Library'],['CDK','Cloud Development Kit'],['CFN','CloudFormation']
+    ['KCL','Kinesis Client Library'],['CDK','Cloud Development Kit']
   ]}
 ];
+
+// The AWS Glossary supports the entries without an override. Every override
+// points to an AWS page that states the abbreviation and its expansion.
+const glossary='https://docs.aws.amazon.com/glossary/latest/reference/glos-chap.html';
+const sources={
+  SAA:'https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html',
+  IaC:'https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-iac.html',
+  RTO:'https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/disaster-recovery-dr-objectives.html',
+  RPO:'https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/disaster-recovery-dr-objectives.html',
+  SLA:'https://docs.aws.amazon.com/prescriptive-guidance/latest/configuring-storage-offload-vmware-cloud-aws/apg-gloss.html',
+  SLO:'https://docs.aws.amazon.com/prescriptive-guidance/latest/configuring-storage-offload-vmware-cloud-aws/apg-gloss.html',
+  CAPEX:'https://docs.aws.amazon.com/prescriptive-guidance/latest/aws-storage-for-vmware-professionals/optimizing-cost-and-performance.html',
+  OPEX:'https://docs.aws.amazon.com/prescriptive-guidance/latest/aws-storage-for-vmware-professionals/optimizing-cost-and-performance.html',
+  PoC:'https://docs.aws.amazon.com/prescriptive-guidance/latest/gen-ai-lifecycle-operational-excellence/dev-architecting.html',
+  DHCP:'https://docs.aws.amazon.com/vpc/latest/userguide/VPC_DHCP_Options.html',
+  TCP:'https://docs.aws.amazon.com/whitepapers/latest/real-time-communication-on-aws/acronyms.html',
+  UDP:'https://docs.aws.amazon.com/whitepapers/latest/real-time-communication-on-aws/acronyms.html',
+  TGW:'https://docs.aws.amazon.com/pdfs/interconnect/latest/userguide/interconnect-ug.pdf',
+  DX:'https://docs.aws.amazon.com/pdfs/directconnect/latest/UserGuide/dc-ug.pdf',
+  DXGW:'https://docs.aws.amazon.com/whitepapers/latest/building-scalable-secure-multi-vpc-network-infrastructure/direct-connect.html',
+  ASG:'https://docs.aws.amazon.com/AmazonECS/latest/developerguide/tutorial-cluster-auto-scaling-console.html',
+  CPU:'https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lab-overview.html',
+  vCPU:'https://docs.aws.amazon.com/solutions/latest/distributed-load-testing-on-aws/glossary.html',
+  GPU:'https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ec2.AcceleratorType.html',
+  SSH:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect-linux-inst-ssh.html',
+  RDP:'https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connecting_to_windows_instance.html',
+  HDD:'https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html',
+  SMB:'https://docs.aws.amazon.com/filegateway/latest/files3/create-smb-file-share.html',
+  RAID:'https://docs.aws.amazon.com/whitepapers/latest/real-time-communication-on-aws/acronyms.html',
+  IA:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html',
+  WORM:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html',
+  DBMS:'https://docs.aws.amazon.com/databrew/latest/dg/dbms-driver-connections.html',
+  NoSQL:'https://aws.amazon.com/nosql/',
+  OLTP:'https://docs.aws.amazon.com/wellarchitected/latest/framework/perf_data_use_purpose_built_data_store.html',
+  OLAP:'https://docs.aws.amazon.com/wellarchitected/latest/framework/perf_data_use_purpose_built_data_store.html',
+  DAX:'https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DAX.html',
+  RCU:'https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/provisioned-capacity-mode.html',
+  WCU:'https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/provisioned-capacity-mode.html',
+  ACU:'https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.how-it-works.html',
+  PITR:'https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/PointInTimeRecovery.Tutorial.html',
+  CDC:'https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Task.CDC.html',
+  ELT:'https://docs.aws.amazon.com/redshift/latest/gsg/getting-started.html',
+  SAML:'https://docs.aws.amazon.com/singlesignon/latest/userguide/scim-profile-saml.html',
+  OIDC:'https://docs.aws.amazon.com/cognito/latest/developerguide/open-id.html',
+  PII:'https://docs.aws.amazon.com/comprehend/latest/dg/how-pii.html',
+  PHI:'https://docs.aws.amazon.com/comprehend-medical/latest/dev/textanalysis-phi.html',
+  FIPS:'https://docs.aws.amazon.com/efs/latest/ug/fips-enabling.html',
+  FIFO:'https://docs.aws.amazon.com/sns/latest/dg/fifo-topic-message-ordering.html',
+  DLQ:'https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-configure-dead-letter-queue.html',
+  XML:'https://docs.aws.amazon.com/amazonq/latest/qbusiness-ug/doc-types.html',
+  JWT:'https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-inbound-auth.html',
+  URL:'https://docs.aws.amazon.com/solutions/latest/distributed-load-testing-on-aws/glossary.html',
+  URI:'https://docs.aws.amazon.com/apigateway/latest/api/API_PutIntegration.html',
+  MQTT:'https://docs.aws.amazon.com/iot/latest/developerguide/mqtt.html',
+  AMQP:'https://docs.aws.amazon.com/wellarchitected/latest/modern-industrial-data-technology-lens/definitions.html',
+  KCL:'https://docs.aws.amazon.com/streams/latest/dev/kcl.html'
+};
+export const abbreviationSource=abbreviation=>sources[abbreviation]||glossary;
 
 const docs={
   az:'https://docs.aws.amazon.com/global-infrastructure/latest/regions/aws-availability-zones.html',
   subnet:'https://docs.aws.amazon.com/vpc/latest/userguide/subnet-sizing.html',
   vpc:'https://docs.aws.amazon.com/vpc/latest/userguide/amazon-vpc-limits.html',
-  rds:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html',
+  rds:'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZSingleStandby.html',
   s3:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html',
   s3upload:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html',
   s3durability:'https://docs.aws.amazon.com/AmazonS3/latest/userguide/DataDurability.html',
@@ -112,7 +170,7 @@ export const NUMBER_FACTS = [
     ['Hány Lambda layer csatolható egy függvényhez?','Legfeljebb 5.',docs.lambda],
     ['Mekkora egy SQS-üzenet legnagyobb mérete?','1 MiB.',docs.sqs],
     ['Mennyi az SQS-üzenetek alapértelmezett megőrzése?','4 nap; legfeljebb 14 napra állítható.',docs.sqs],
-    ['Mennyi az SQS visibility timeout alapértéke és maximuma?','30 másodperc; legfeljebb 12 óra.',docs.sqs],
+    ['Mennyi az SQS visibility timeout alapértéke és maximuma?','30 másodperc; legfeljebb 12 óra.','https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html'],
     ['Hány üzenet küldhető egy SQS batch kérésben?','Legfeljebb 10.',docs.sqs],
     ['Mennyi az SQS long polling maximuma?','20 másodperc.','https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-configure-queue-parameters.html']
   ]}
