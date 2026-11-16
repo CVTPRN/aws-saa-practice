@@ -1,5 +1,5 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
-import {parseCSV,csvRows,exportCSV,questionId,questionIssue,dayKey,makeAttempt,answerAttempt,score,statistics,validateBackup,FORMAT,VERSION,escape} from '../web/core.mjs';
+import {parseCSV,csvRows,exportCSV,questionId,questionIssue,dayKey,makeAttempt,answerAttempt,score,statistics,validateBackup,FORMAT,VERSION,escape,TOPICS,questionInTopic} from '../web/core.mjs';
 export const fixture=()=>Array.from({length:40},(_,i)=>({id:'q'+i,question:`Question ${i} (Choose two.)`,options:['Alpha','Beta','Gamma'],correct:[0,2],issue:'',active:true,explanation:'',rawKey:'',sourceLine:null}));
 const makeBackup=(questions,attempts=[])=>({format:FORMAT,version:VERSION,questions,attempts});
 test('original CSV produces the reviewed question bank',async()=>{
@@ -26,6 +26,18 @@ test('30 distinct random active questions and independent snapshots',()=>{
  const qs=fixture();qs[0].active=false;qs[1].issue='Review';const a=makeAttempt(qs,'free'),b=makeAttempt(qs,'free');
  assert.equal(a.snapshot.length,30);assert.equal(new Set(a.snapshot.map(q=>q.id)).size,30);assert.ok(a.snapshot.every(q=>q.id!=='q0'&&q.id!=='q1'));assert.notDeepEqual(a.snapshot,b.snapshot);assert.notEqual(a.id,b.id);
  qs.forEach(q=>q.question='Edited');assert.notEqual(a.snapshot[0].question,'Edited');assert.throws(()=>makeAttempt(qs.slice(0,29),'daily'));
+});
+test('every topic has a 30-question pool from the source bank and keeps its identity in backups',async()=>{
+ const bank=parseCSV(await readFile(new URL('../data/questions.csv',import.meta.url),'utf8')).questions.map((q,i)=>({...q,id:`q${i}`}));
+ for(const topic of TOPICS){
+  const pool=bank.filter(q=>q.active&&questionInTopic(q,topic.id));assert.ok(pool.length>=30,`${topic.id}: ${pool.length}`);
+  const a=makeAttempt(bank,'topic',new Date('2026-11-10T10:00:00Z'),topic.id);
+  assert.equal(a.topicId,topic.id);assert.equal(a.snapshot.length,30);
+  assert.ok(a.snapshot.every(q=>questionInTopic(q,topic.id)));
+  const saved=validateBackup(makeBackup(bank,[a]));assert.equal(saved.attempts[0].topicId,topic.id);
+ }
+ assert.throws(()=>makeAttempt(bank,'topic',new Date(),'unknown'));
+ assert.throws(()=>makeAttempt(bank.slice(0,10),'topic',new Date(),'compute'));
 });
 test('exact multi-answer grading, stale replay prevention and completion day',()=>{
  const now=new Date('2026-11-10T22:59:00Z');let a=makeAttempt(fixture(),'daily',now);

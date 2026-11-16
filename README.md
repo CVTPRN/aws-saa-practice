@@ -6,6 +6,7 @@ A free, static practice application with a Hungarian interface and the original 
 
 - A daily set of 30 distinct random questions, once per **Europe/Budapest calendar day** in the current browser.
 - Unlimited free practice; each new round contains 30 distinct random questions, with possible overlap between rounds.
+- **Témakörök**: eight service-focused categories, each with unlimited 30-question rounds, a per-topic accuracy summary, and a resume link for unfinished rounds. A question may appear in multiple categories. Classification is based on AWS service names and other topic terms in the question text, not the answer options. A category with fewer than 30 active matching questions cannot start a new round.
 - Every submitted answer is saved in **IndexedDB**. Refreshing the page or closing/reopening the browser preserves committed progress. Wait until the next question appears before closing. Unsubmitted selections are not saved.
 - Exact-match grading for multiple answers; correct answers and optional explanations appear after all 30 questions have been answered.
 - Daily accuracy, a 28-day activity grid, streaks, full history and unfinished attempts. Statistics include completed rounds and use their **completion date** in Budapest.
@@ -63,6 +64,6 @@ Static hosting is within Render's free offering, subject to its workspace bandwi
 
 ## Validation
 
-`npm test` covers the exact source import counts, CSV parsing and roundtrips, Budapest day boundaries/DST, random selection, exact multiple-answer grading, replay prevention, daily uniqueness across concurrent tabs, persistence after reopening storage, backup validation/restore, and invalid imports. Build runs tests before publication. Browser QA exercises a complete 30-question round, refresh/resume, local question creation and backup download.
+`npm test` covers the exact source import counts, CSV parsing and roundtrips, Budapest day boundaries/DST, random selection, topic pool selection and saved topic identity, exact multiple-answer grading, replay prevention, daily uniqueness across concurrent tabs, persistence after reopening storage, backup validation/restore, and invalid imports. Build runs tests before publication. Browser QA exercises a complete 30-question round, refresh/resume, local question creation and backup download.
 
 The previous Flask implementation remains available in Git history; this version intentionally replaces account authentication with local personal storage.

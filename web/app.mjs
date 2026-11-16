@@ -1,4 +1,4 @@
-import {escape as e,dayKey,statistics,score,sameAnswer,questionIssue,parseCSV,questionId,exportCSV,validateBackup} from './core.mjs';
+import {escape as e,dayKey,statistics,score,sameAnswer,questionIssue,parseCSV,questionId,exportCSV,validateBackup,TOPICS,topicById,questionInTopic} from './core.mjs';
 import * as storage from './db.mjs';
 const main=document.querySelector('#main'),messageBox=document.querySelector('#message');
 let db,questions=[],attempts=[],pendingRestore=null,epoch=0;
@@ -12,6 +12,7 @@ const btn=(action,label,classes='button',extra='')=>`<button type="button" class
 const attemptLink=a=>`/practice/${encodeURIComponent(a.id)}`;
 const prettyDate=value=>new Intl.DateTimeFormat('hu-HU',{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
 const activeQuestion=q=>q.active&&!q.issue&&!questionIssue(q);
+const modeLabel=a=>a.mode==='daily'?'Napi kihívás':a.mode==='topic'?`Témakör: ${topicById(a.topicId)?.name||'Ismeretlen'}`:'Szabad gyakorlás';
 function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 async function load(){[questions,attempts]=await Promise.all([storage.all(db,'questions'),storage.all(db,'attempts')]);}
 function dashboard(){
@@ -21,21 +22,33 @@ function dashboard(){
   <div class="practice-cards"><section class="daily-card"><div class="card-top"><span class="pill">NAPI KIHÍVÁS</span><span>01 / FÓKUSZ</span></div><h2>30 kérdés.<br>Egy lépés előre.</h2><p>Mai saját feladatsorod. Minden választ mentünk,<br class="desktop"> így bármikor visszatérhetsz.</p><div class="card-bottom"><span>30 kérdés <b>·</b> Napi 1 feladatsor</span>${daily?link(attemptLink(daily),daily.completedAt?'Mai eredmény ↗':'Folytatás ↗','button cream'):btn('start-daily','Kezdjük el ↗','button cream')}</div><div class="rings" aria-hidden="true"></div></section>
   <section class="free-card"><div class="card-top"><span class="pill pale">SZABAD GYAKORLÁS</span><span>02 / FELFEDEZÉS</span></div><h2>A saját<br>tempódban.</h2><p>Új kör, új lehetőségek. 30 véletlen kérdés,<br class="desktop"> ahányszor csak szeretnéd.</p><div class="card-bottom"><span>30 random kérdés <b>·</b> Korlátlan kör</span>${btn('start-free','Új gyakorlás ↗')}</div></section></div>
   <div class="local-note"><span>◉ A gyakorlásaid ebben a böngészőben maradnak. A böngészőadatok törlése előtt készíts mentést.</span>${link('/settings','Biztonsági mentés →')}</div>
-  ${active.length?`<div class="resume-list"><span class="eyebrow">FOLYTATÁSRA VÁR</span>${active.slice(0,6).map(a=>link(attemptLink(a),`${a.mode==='daily'?'Napi kihívás':'Szabad gyakorlás'} · ${a.day} · ${a.answers.length}/30 <span>Folytatás →</span>`)).join('')}${active.length>6?link('/history',`Összes (${active.length}) →`):''}</div>`:''}
+  ${active.length?`<div class="resume-list"><span class="eyebrow">FOLYTATÁSRA VÁR</span>${active.slice(0,6).map(a=>link(attemptLink(a),`${e(modeLabel(a))} · ${a.day} · ${a.answers.length}/30 <span>Folytatás →</span>`)).join('')}${active.length>6?link('/history',`Összes (${active.length}) →`):''}</div>`:''}
+  <div class="section-heading"><div><span class="eyebrow">CÉLZOTT GYAKORLÁS</span><h2>Ismételj témakörönként</h2></div>${link('/topics','Témakörök megnyitása →','button secondary')}</div>
   <div class="section-heading"><div><span class="eyebrow">LÁTHATÓ FEJLŐDÉS</span><h2>A kitartásod nyoma</h2></div><span class="muted">Az elmúlt 28 nap</span></div><section class="card activity"><div class="activity-days">${s.calendar.map(d=>`<div class="day-cell ${d.sessions?(d.percent>=80?'great':d.percent>=60?'good':'learning'):''}" title="${d.day}: ${d.sessions?d.percent+'%':'nincs befejezett gyakorlás'}"><span>${d.day.slice(8)}</span><strong>${d.sessions?d.percent+'%':'·'}</strong></div>`).join('')}</div><div class="activity-legend"><span>A befejezés napja szerint · Europe/Budapest</span><span>○ Nincs gyakorlás <b class="legend-learning">●</b> &lt;60% <b class="legend-good">●</b> 60–79% <b class="legend-great">●</b> ≥80%</span></div></section>
   <div class="section-heading"><h2>Napi teljesítmény</h2><span class="muted">Helyes válaszok / összes kérdés</span></div><section class="card table-wrap"><table><thead><tr><th>Dátum</th><th>Gyakorlások</th><th>Helyes válaszok</th><th>Pontosság</th><th>Napi kihívás</th></tr></thead><tbody>${s.days.map(d=>`<tr><td>${d.day}</td><td>${d.sessions}</td><td>${d.correct} / ${d.total}</td><td><strong>${d.percent}%</strong></td><td>${d.daily?'✓ Teljesítve':'—'}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Az első befejezett gyakorlás után itt jelenik meg a fejlődésed.</td></tr>'}</tbody></table></section>
   ${s.finished.length?`<div class="section-heading"><h2>Legutóbbi gyakorlások</h2>${link('/history','Összes gyakorlás →')}</div><div class="history-list">${s.finished.slice(0,6).map(historyItem).join('')}</div>`:''}`;
 }
-function historyItem(a){return link(attemptLink(a),`<div><strong>${a.mode==='daily'?'Napi kihívás':'Szabad gyakorlás'}</strong><small>${e(prettyDate(a.completedAt||a.startedAt))}</small></div><span>${a.completedAt?score(a)+' / 30':a.answers.length+' / 30 mentve'} <b>→</b></span>`,'card history-item');}
+function historyItem(a){return link(attemptLink(a),`<div><strong>${e(modeLabel(a))}</strong><small>${e(prettyDate(a.completedAt||a.startedAt))}</small></div><span>${a.completedAt?score(a)+' / 30':a.answers.length+' / 30 mentve'} <b>→</b></span>`,'card history-item');}
+function topicsPage(){
+  const available=questions.filter(activeQuestion);
+  return `<div class="page-heading"><div><span class="eyebrow">CÉLZOTT GYAKORLÁS</span><h1>Témakörök<span class="accent">.</span></h1><p class="muted">Válassz egy témát, és gyakorolj 30 véletlenszerű kérdéssel. Bármennyiszer újrakezdheted.</p></div></div>
+    <div class="topic-grid">${TOPICS.map(topic=>{
+      const count=available.filter(q=>questionInTopic(q,topic.id)).length;
+      const done=attempts.filter(a=>a.mode==='topic'&&a.topicId===topic.id&&a.completedAt);
+      const inProgress=attempts.filter(a=>a.mode==='topic'&&a.topicId===topic.id&&!a.completedAt).sort((a,b)=>b.startedAt.localeCompare(a.startedAt))[0];
+      const total=done.length*30,correct=done.reduce((sum,a)=>sum+score(a),0);
+      return `<section class="card topic-card"><div class="topic-card-top"><span class="eyebrow">${e(topic.name)}</span><span class="topic-count">${count} kérdés</span></div><h2>${e(topic.name)}</h2><p>${e(topic.description)}</p><div class="topic-stats"><span>${done.length} befejezett kör</span><strong>${total?Math.round(correct*100/total)+'%':'—'} pontosság</strong></div><div class="topic-actions">${btn('start-topic','Új 30 kérdéses kör ↗','button',`data-topic="${e(topic.id)}" ${count<30?'disabled':''}`)}${inProgress?link(attemptLink(inProgress),`Folytatás (${inProgress.answers.length}/30) →`,'topic-resume'):''}</div>${count<30?`<small>Még ${30-count} aktív kérdés kell a gyakorláshoz.</small>`:''}</section>`;
+    }).join('')}</div><p class="topic-note">A besorolás a kérdésszövegben szereplő szolgáltatások alapján történik, ezért egy kérdés több témában is megjelenhet. Az új vagy szerkesztett kérdéseket a szövegük alapján automatikusan soroljuk be.</p>`;
+}
 function practice(id){
   const a=attempts.find(a=>a.id===id);if(!a)throw Error('Ez a gyakorlás nem található ebben a böngészőben.');
   if(a.completedAt)return result(a);
   const index=a.answers.length,q=a.snapshot[index];
-  return `<div class="quiz-shell"><div class="quiz-nav">${link('/','← Vissza az áttekintéshez')}<span class="pill pale">${a.mode==='daily'?'NAPI KIHÍVÁS':'SZABAD GYAKORLÁS'}</span></div><div class="section-heading"><h2>${index+1}<span class="muted"> / 30</span></h2><span class="muted">${index} válasz elmentve</span></div><progress value="${index}" max="30">${index}/30</progress><section class="card question-card"><span class="eyebrow">AWS SOLUTIONS ARCHITECT · SAA-C03</span><h1 class="question-text" lang="en">${e(q.question)}</h1><p class="selection-hint">${q.correct.length>1?`Többválaszos kérdés · Jelölj meg pontosan ${q.correct.length} választ.`:'Egyválaszos kérdés · Jelöld meg a helyes választ.'}</p><form data-form="answer" data-id="${e(id)}" data-index="${index}" data-count="${q.correct.length}"><fieldset><legend class="sr-only">Válaszlehetőségek</legend>${q.options.map((o,i)=>`<label class="answer"><input type="${q.correct.length>1?'checkbox':'radio'}" name="answer" value="${i}"><span class="answer-letter">${letter(i)}</span><span lang="en">${e(o)}</span></label>`).join('')}</fieldset><div class="quiz-actions"><span class="muted" id="selected-count" aria-live="polite">0 / ${q.correct.length} válasz kijelölve · A kiértékelés a kör végén jelenik meg.</span><button class="button" disabled>${index===29?'Befejezés és kiértékelés':'Válasz mentése'} →</button></div></form></section></div>`;
+  return `<div class="quiz-shell"><div class="quiz-nav">${link(a.mode==='topic'?'/topics':'/',a.mode==='topic'?'← Vissza a témakörökhöz':'← Vissza az áttekintéshez')}<span class="pill pale">${e(modeLabel(a))}</span></div><div class="section-heading"><h2>${index+1}<span class="muted"> / 30</span></h2><span class="muted">${index} válasz elmentve</span></div><progress value="${index}" max="30">${index}/30</progress><section class="card question-card"><span class="eyebrow">AWS SOLUTIONS ARCHITECT · SAA-C03</span><h1 class="question-text" lang="en">${e(q.question)}</h1><p class="selection-hint">${q.correct.length>1?`Többválaszos kérdés · Jelölj meg pontosan ${q.correct.length} választ.`:'Egyválaszos kérdés · Jelöld meg a helyes választ.'}</p><form data-form="answer" data-id="${e(id)}" data-index="${index}" data-count="${q.correct.length}"><fieldset><legend class="sr-only">Válaszlehetőségek</legend>${q.options.map((o,i)=>`<label class="answer"><input type="${q.correct.length>1?'checkbox':'radio'}" name="answer" value="${i}"><span class="answer-letter">${letter(i)}</span><span lang="en">${e(o)}</span></label>`).join('')}</fieldset><div class="quiz-actions"><span class="muted" id="selected-count" aria-live="polite">0 / ${q.correct.length} válasz kijelölve · A kiértékelés a kör végén jelenik meg.</span><button class="button" disabled>${index===29?'Befejezés és kiértékelés':'Válasz mentése'} →</button></div></form></section></div>`;
 }
 function result(a){
   const points=score(a);
-  return `<div class="quiz-shell">${link('/','← Vissza az áttekintéshez')}<section class="result-hero"><span class="eyebrow">GYAKORLÁS TELJESÍTVE · ${a.completedDay}</span><h1>Ez is egy lépés előre.</h1><div class="result-score">${Math.round(points*100/30)}<span>%</span></div><p><strong>${points} / 30 helyes válasz</strong> · ${a.mode==='daily'?'Napi kihívás':'Szabad gyakorlás'}</p><p class="muted">Gyakorlási pontosság, nem az AWS vizsga skálázott pontszáma.</p>${btn('start-free','Új szabad gyakorlás ↗')}</section><div class="section-heading"><h2>Nézzük át a válaszokat</h2><label class="filter-check"><input type="checkbox" id="mistakes-only"> Csak a hibásak</label></div>${a.snapshot.map((q,index)=>{
+  return `<div class="quiz-shell">${link(a.mode==='topic'?'/topics':'/',a.mode==='topic'?'← Vissza a témakörökhöz':'← Vissza az áttekintéshez')}<section class="result-hero"><span class="eyebrow">GYAKORLÁS TELJESÍTVE · ${a.completedDay}</span><h1>Ez is egy lépés előre.</h1><div class="result-score">${Math.round(points*100/30)}<span>%</span></div><p><strong>${points} / 30 helyes válasz</strong> · ${e(modeLabel(a))}</p><p class="muted">Gyakorlási pontosság, nem az AWS vizsga skálázott pontszáma.</p>${a.mode==='topic'?btn('start-topic','Új kör ebben a témában ↗','button',`data-topic="${e(a.topicId)}"`):btn('start-free','Új szabad gyakorlás ↗')}</section><div class="section-heading"><h2>Nézzük át a válaszokat</h2><label class="filter-check"><input type="checkbox" id="mistakes-only"> Csak a hibásak</label></div>${a.snapshot.map((q,index)=>{
     const selected=a.answers[index],ok=sameAnswer(selected,q.correct);
     return `<details class="card review-item ${ok?'is-correct':'is-wrong'}" ${ok?'':'open'}><summary><span class="status-dot ${ok?'ok':'wrong'}">${ok?'✓':'×'}</span><strong>${index+1}. kérdés</strong><span>${ok?'Helyes':'Átismétlendő'}</span></summary><div class="review-content"><p class="question-text" lang="en">${e(q.question)}</p>${q.options.map((o,i)=>`<div class="review-answer ${q.correct.includes(i)?'right':selected.includes(i)?'wrong-answer':''}"><strong>${letter(i)}</strong><span lang="en">${e(o)}</span><small>${q.correct.includes(i)?'Helyes válasz':''}${selected.includes(i)?' · Te választottad':''}</small></div>`).join('')}${q.explanation?`<div class="explanation"><strong>Magyarázat</strong><p>${e(q.explanation)}</p></div>`:''}</div></details>`;
   }).join('')}</div>`;
@@ -61,6 +74,7 @@ async function render(){
   try{
     await load();let html;
     if(path==='/')html=dashboard();
+    else if(path==='/topics')html=topicsPage();
     else if(path==='/admin')html=admin(new URLSearchParams(query));
     else if(path==='/settings')html=await settings();
     else if(path==='/history')html=`<div class="page-heading"><div><span class="eyebrow">A TE HALADÁSOD</span><h1>Gyakorlási előzmények</h1></div>${link('/','← Áttekintés')}</div><div class="history-list">${[...attempts].sort((a,b)=>b.startedAt.localeCompare(a.startedAt)).map(historyItem).join('')||'<p>Még nincs elkezdett gyakorlás.</p>'}</div>`;
@@ -68,7 +82,7 @@ async function render(){
     else if(path.startsWith('/question/'))html=editor(decodeURIComponent(path.slice(10)));
     else html=`<section class="card empty"><h1>Ez az oldal nem található.</h1>${link('/','Vissza a főoldalra →','button')}</section>`;
     if(current!==epoch)return;main.innerHTML=html;
-    document.querySelectorAll('[data-nav]').forEach(a=>{const on=a.dataset.nav===(path.startsWith('/admin')||path.startsWith('/question')?'admin':path==='/settings'?'settings':'home');if(on)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+    document.querySelectorAll('[data-nav]').forEach(a=>{const on=a.dataset.nav===(path.startsWith('/admin')||path.startsWith('/question')?'admin':path==='/settings'?'settings':path==='/topics'?'topics':'home');if(on)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
   }catch(error){if(current===epoch)failure(error);}
 }
 main.addEventListener('change',event=>{
@@ -108,6 +122,9 @@ main.addEventListener('click',async event=>{
     switch(button.dataset.action){
       case 'start-daily':case 'start-free':{
         const a=await storage.start(db,button.dataset.action==='start-daily'?'daily':'free');to(attemptLink(a));break;
+      }
+      case 'start-topic':{
+        const a=await storage.start(db,'topic',new Date(),button.dataset.topic);to(attemptLink(a));break;
       }
       case 'export-csv':download('saa-c03-kerdesek.csv',exportCSV(await storage.all(db,'questions')),'text/csv;charset=utf-8');message('A CSV export elkészült. A statisztikákat a teljes JSON mentés tartalmazza.');break;
       case 'export-backup':{

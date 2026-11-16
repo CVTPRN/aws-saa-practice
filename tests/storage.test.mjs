@@ -11,6 +11,15 @@ test('concurrent identical submissions consume only one answer',async()=>{
  const {db}=await fresh(),a=await storage.start(db,'free');
  await Promise.all([storage.answer(db,a.id,0,[0,2]),storage.answer(db,a.id,0,[0,2])]);const saved=await storage.get(db,'attempts',a.id);assert.equal(saved.answers.length,1);db.close();
 });
+test('topic attempts persist and round-trip through the complete backup',async()=>{
+ const {db}=await fresh();const questions=await storage.all(db,'questions');
+ for(const q of questions)await storage.saveQuestion(db,{...q,question:`Amazon EC2 ${q.question}`});
+ const a=await storage.start(db,'topic',new Date(),'compute');
+ assert.equal(a.topicId,'compute');assert.ok(a.snapshot.every(q=>q.question.includes('Amazon EC2')));
+ await storage.answer(db,a.id,0,[0,2]);const copy=await fresh();await storage.restore(copy.db,await storage.backup(db));
+ assert.equal((await storage.get(copy.db,'attempts',a.id)).topicId,'compute');
+ assert.equal((await storage.get(copy.db,'attempts',a.id)).answers.length,1);db.close();copy.db.close();
+});
 test('reopening storage preserves progress and edited questions; seed never overwrites',async()=>{
  let {db,name}=await fresh();const a=await storage.start(db,'daily');await storage.answer(db,a.id,0,[0,2]);
  const q=fixture()[0];q.question='My edited question (Choose two.)';q.active=false;await storage.saveQuestion(db,q);db.close();db=await storage.openDB(name);await storage.seed(db,fixture());

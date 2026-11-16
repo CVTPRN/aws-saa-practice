@@ -27,13 +27,13 @@ export async function seed(db,questions){
     meta.put({key:'seeded',value:true});
   });
 }
-export function start(db,mode,now=new Date()){
+export function start(db,mode,now=new Date(),topicId=null){
   return transaction(db,['questions','attempts'],'readwrite',async tx=>{
     const attempts=tx.objectStore('attempts');
     // Candidate is made inside the transaction: multiple tabs cannot create two daily rounds.
     if(mode==='daily'){const existing=await req(attempts.index('dailyKey').get(dayKey(now)));if(existing)return existing;}
     const questions=await req(tx.objectStore('questions').getAll());
-    const candidate=makeAttempt(questions,mode,now);
+    const candidate=makeAttempt(questions,mode,now,topicId);
     await req(attempts.add(candidate));return candidate;
   });
 }

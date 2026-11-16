@@ -1,5 +1,19 @@
 export const FORMAT = 'saa-studio-backup';
 export const VERSION = 1;
+// A question can belong to several topics. Match the prompt only, because options
+// often name unrelated services as distractors. IDs are stable in saved attempts.
+export const TOPICS = Object.freeze([
+  {id:'network',name:'Hálózat és tartalomkézbesítés',description:'VPC, útválasztás, kapcsolat, terheléselosztás és CDN.',pattern:/\b(?:VPC|subnet|Route 53|CloudFront|Elastic Load Balanc(?:ing|er)|Application Load Balancer|Network Load Balancer|Direct Connect|Transit Gateway|PrivateLink|VPN|NAT gateway)\b/i},
+  {id:'compute',name:'Compute és konténerek',description:'EC2, Auto Scaling, konténerek és futtatási környezetek.',pattern:/\b(?:EC2|Auto Scaling|ECS|EKS|Fargate|Elastic Beanstalk|Lightsail|AWS Batch)\b/i},
+  {id:'storage',name:'Tárolás',description:'S3, EBS, EFS, FSx és Storage Gateway.',pattern:/\b(?:Amazon S3|S3|EBS|EFS|FSx|Storage Gateway|Glacier)\b/i},
+  {id:'database',name:'Adatbázisok',description:'RDS, Aurora, DynamoDB és más adatbázisok.',pattern:/\b(?:RDS|Aurora|DynamoDB|ElastiCache|Redshift|Neptune|DocumentDB|Timestream)\b/i},
+  {id:'security',name:'Biztonság és jogosultságok',description:'IAM, titkosítás, szervezeti kontroll és védelem.',pattern:/\b(?:IAM|KMS|Secrets Manager|GuardDuty|Security Hub|WAF|Shield|Cognito|Organizations|Control Tower|AWS Config)\b/i},
+  {id:'serverless',name:'Serverless és integráció',description:'Lambda, API-k, üzenetsorok és események.',pattern:/\b(?:Lambda|API Gateway|SQS|SNS|EventBridge|Step Functions|Kinesis)\b/i},
+  {id:'hybrid',name:'Migráció és hibrid felhő',description:'Helyszíni rendszerek, adatmozgatás és migráció.',pattern:/\b(?:on-premises|on premises|hybrid|DataSync|Snowball|Storage Gateway|Direct Connect|DMS|Migration Hub|migrat(?:e|ion|ing))\b/i},
+  {id:'operations',name:'Megfigyelés és üzemeltetés',description:'Naplózás, metrikák, konfiguráció és automatizálás.',pattern:/\b(?:CloudWatch|CloudTrail|AWS Config|Systems Manager|Trusted Advisor|CloudFormation|Well-Architected|monitoring|logging)\b/i}
+]);
+export const topicById = id => TOPICS.find(topic=>topic.id===id);
+export const questionInTopic = (question,id) => Boolean(topicById(id)?.pattern.test(question.question));
 export const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const dayKey = (date = new Date()) => {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone:'Europe/Budapest', year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(date);
@@ -83,13 +97,14 @@ function randomIndex(max) {
   do{crypto.getRandomValues(buf);}while(buf[0]>=limit);
   return buf[0]%max;
 }
-export function makeAttempt(questions,mode,now=new Date()) {
-  if(!['daily','free'].includes(mode))throw Error('Ismeretlen gyakorlási mód.');
-  const pool=questions.filter(q=>q.active && !questionIssue(q) && !q.issue);
-  if(pool.length<30)throw Error('Legalább 30 aktív, érvényes kérdés szükséges.');
+export function makeAttempt(questions,mode,now=new Date(),topicId=null) {
+  if(!['daily','free','topic'].includes(mode))throw Error('Ismeretlen gyakorlási mód.');
+  if(mode==='topic'?!topicById(topicId):topicId!==null)throw Error('Ismeretlen témakör.');
+  const pool=questions.filter(q=>q.active && !questionIssue(q) && !q.issue && (mode!=='topic'||questionInTopic(q,topicId)));
+  if(pool.length<30)throw Error(mode==='topic'?'Ebben a témakörben még nincs 30 aktív, érvényes kérdés.':'Legalább 30 aktív, érvényes kérdés szükséges.');
   for(let i=pool.length-1;i>0;i--){const j=randomIndex(i+1);[pool[i],pool[j]]=[pool[j],pool[i]];}
   const day=dayKey(now);
-  return {id:crypto.randomUUID(),mode,day,...(mode==='daily'?{dailyKey:day}:{}),snapshot:structuredClone(pool.slice(0,30)),answers:[],startedAt:now.toISOString(),completedAt:null,completedDay:null};
+  return {id:crypto.randomUUID(),mode,day,...(mode==='daily'?{dailyKey:day}:{}),...(mode==='topic'?{topicId}:{}),snapshot:structuredClone(pool.slice(0,30)),answers:[],startedAt:now.toISOString(),completedAt:null,completedDay:null};
 }
 export function answerAttempt(attempt,index,selected,now=new Date()) {
   if(attempt.completedAt || attempt.answers.length!==index)return attempt; // Replay/stale tab: never consume the next question.
@@ -127,13 +142,14 @@ export function validateBackup(value) {
   const questions=value.questions.map(normalizeQuestion),ids=new Set(),dailies=new Set();
   if(new Set(questions.map(q=>q.id)).size!==questions.length)fail();
   const attempts=value.attempts.map(a=>{
-    if(!a||!text(a.id,100)||!a.id||ids.has(a.id)||!['daily','free'].includes(a.mode)||!date(a.day)||!iso(a.startedAt)||dayKey(new Date(a.startedAt))!==a.day||!Array.isArray(a.snapshot)||a.snapshot.length!==30||!Array.isArray(a.answers)||a.answers.length>30)fail();ids.add(a.id);
+    if(!a||!text(a.id,100)||!a.id||ids.has(a.id)||!['daily','free','topic'].includes(a.mode)||!date(a.day)||!iso(a.startedAt)||dayKey(new Date(a.startedAt))!==a.day||!Array.isArray(a.snapshot)||a.snapshot.length!==30||!Array.isArray(a.answers)||a.answers.length>30)fail();ids.add(a.id);
+    if(a.mode==='topic'?!topicById(a.topicId):a.topicId!=null)fail();
     if(a.mode==='daily'){if(dailies.has(a.day))fail();dailies.add(a.day);}
     const snapshot=a.snapshot.map(normalizeQuestion);if(snapshot.some(q=>q.issue)||new Set(snapshot.map(q=>q.id)).size!==30)fail();
     const answers=a.answers.map((selected,i)=>{if(!Array.isArray(selected)||selected.length!==snapshot[i].correct.length||new Set(selected).size!==selected.length||selected.some(v=>!Number.isInteger(v)||v<0||v>=snapshot[i].options.length))fail();return [...selected].sort((x,y)=>x-y);});
     if(answers.length===30){if(!iso(a.completedAt)||Date.parse(a.completedAt)<Date.parse(a.startedAt)||a.completedDay!==dayKey(new Date(a.completedAt)))fail();}
     else if(a.completedAt!=null||a.completedDay!=null)fail();
-    return {id:a.id,mode:a.mode,day:a.day,...(a.mode==='daily'?{dailyKey:a.day}:{}),snapshot,answers,startedAt:a.startedAt,completedAt:a.completedAt||null,completedDay:a.completedDay||null};
+    return {id:a.id,mode:a.mode,day:a.day,...(a.mode==='daily'?{dailyKey:a.day}:{}),...(a.mode==='topic'?{topicId:a.topicId}:{}),snapshot,answers,startedAt:a.startedAt,completedAt:a.completedAt||null,completedDay:a.completedDay||null};
   });
   return {format:FORMAT,version:VERSION,questions,attempts};
 }
